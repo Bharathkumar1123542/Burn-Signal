@@ -63,4 +63,4 @@ Hackathon MVP — see `project_overview.md` (Section 9, Milestones) for phase br
 
 ## Scope Note
 
-BurnSignal is outreach-only by design. It never triggers penalty or enforcement action, and no alert is dispatched to a farmer without a valid, available equipment alternative attached to it.
+BurnSignal is outreach-only by design. It never triggers penalty or enforcement action, and no alert is dispatched to a farmer without a valid, available equipment attached to it.
