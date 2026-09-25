@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="BurnSignal — Predictive agricultural burning intervention dashboard. Monitor farm plot burn-likelihood scores, hotspot clusters, and KVK extension worker dispatch status in real time." />
+  <meta name="theme-color" content="#0b0f1a" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="BurnSignal — Pre-Ignition Intervention Dashboard" />
+  <meta property="og:description" content="Plot-level burn-likelihood scoring and automated outreach routing for stubble-fire prevention." />
+  <meta property="og:type" content="website" />
+
+  <title>BurnSignal — Pre-Ignition Dashboard</title>
+
+  <link rel="stylesheet" href="styles/index.css" />
+
+  <!-- Leaflet CSS (map panel — loaded here so it doesn't block component JS) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin="anonymous"
+  />
+
+  <style>
+    /* ── App-shell page-transition overlay ──────────────────────── */
+    #page-transition {
+      position: fixed;
+      inset: 0;
+      background: var(--color-bg-base);
+      z-index: var(--z-modal);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--duration-fast) var(--ease-out);
+    }
+    #page-transition.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* ── Skip-to-content link (accessibility) ───────────────────── */
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: var(--space-4);
+      z-index: calc(var(--z-toast) + 1);
+      background: var(--color-primary-500);
+      color: var(--color-text-inverse);
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-md);
+      font-weight: var(--weight-semibold);
+      font-size: var(--text-sm);
+      text-decoration: none;
+      transition: top var(--duration-fast) var(--ease-out);
+    }
+    .skip-link:focus { top: var(--space-4); }
+
+    /* ── Topbar internals ───────────────────────────────────────── */
+    .topbar__left  { display: flex; align-items: center; gap: var(--space-6); flex: 1; }
+    .topbar__right { display: flex; align-items: center; gap: var(--space-3); }
+
+    .topbar__divider {
+      width: 1px;
+      height: 24px;
+      background: var(--color-border-subtle);
+    }
+
+    /* Inline pipeline mini-status */
+    .topbar-pipeline {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      font-size: var(--text-xs);
+      color: var(--color-text-tertiary);
+    }
+    .topbar-pipeline__stage {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+    .topbar-pipeline__dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-border-default);
+    }
+    .topbar-pipeline__dot--ok      { background: var(--color-status-ready); }
+    .topbar-pipeline__dot--running { background: var(--color-primary-500); animation: pulse-dot 1.5s infinite; }
+    .topbar-pipeline__dot--error   { background: var(--color-risk-critical); }
+
+    /* Last-run timestamp chip */
+    .run-chip {
+      font-size: var(--text-xs);
+      color: var(--color-text-tertiary);
+      background: var(--color-bg-elevated);
+      border: 1px solid var(--color-border-subtle);
+      border-radius: var(--radius-full);
+      padding: 2px var(--space-3);
+      white-space: nowrap;
+    }
+
+    /* ── Sidebar logo area ──────────────────────────────────────── */
+    .sidebar__logo-area {
+      padding: 0 var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--color-border-subtle);
+      margin-bottom: var(--space-4);
+    }
+
+    /* ── Theme toggle button ────────────────────────────────────── */
+    .theme-toggle {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      background: var(--color-bg-elevated);
+      border: 1px solid var(--color-border-subtle);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-secondary);
+      transition: background var(--duration-fast) var(--ease-out),
+                  color var(--duration-fast) var(--ease-out);
+    }
+    .theme-toggle:hover {
+      background: var(--color-border-default);
+      color: var(--color-text-primary);
+    }
+
+    /* ── Sidebar mobile hamburger ───────────────────────────────── */
+    #sidebar-toggle {
+      display: none;
+    }
+    @media (max-width: 768px) {
+      #sidebar-toggle { display: flex; }
+      .topbar-pipeline { display: none; }
+      .sidebar__logo-area { display: none; }
+    }
+
+    /* ── Active page indicator (left border) ────────────────────── */
+    .nav-item.active {
+      border-left: 2px solid var(--color-primary-500);
+      padding-left: calc(var(--space-3) - 2px);
+    }
+
+    /* ── Page view slots ────────────────────────────────────────── */
+    .page-view {
+      display: none;
+      animation: fade-in var(--duration-base) var(--ease-out);
+    }
+    .page-view.active { display: block; }
+
+    /* ── Footer watermark ───────────────────────────────────────── */
+    .sidebar__footer {
+      margin-top: auto;
+      padding: var(--space-4) var(--space-3);
+      border-top: 1px solid var(--color-border-subtle);
+    }
+    .sidebar__footer-text {
+      font-size: var(--text-xs);
+      color: var(--color-text-tertiary);
+      line-height: var(--leading-relaxed);
+    }
+    .sidebar__footer-text strong {
+      color: var(--color-text-secondary);
+    }
+
+    /* ── Placeholder content while components load ──────────────── */
+    .loading-placeholder {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      padding: var(--space-6) 0;
+    }
+    .loading-placeholder .skeleton { height: 200px; }
+    .loading-placeholder .skeleton--sm { height: 80px; }
+  </style>
+</head>
+
+<body>
+  <!-- Skip-to-content (keyboard / screen-reader users) -->
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <!-- Page transition overlay (prevents flash during nav) -->
+  <div id="page-transition" role="presentation" aria-hidden="true"></div>
+
+  <!-- ============================================================
+       APP SHELL
+  ============================================================ -->
+  <div class="app-shell" id="app-shell">
+
+    <!-- ── TOP BAR ─────────────────────────────────────────────── -->
+    <header class="topbar" role="banner" aria-label="BurnSignal application header">
+
+      <div class="topbar__left">
+
+        <!-- Mobile: hamburger (hidden on desktop via CSS) -->
+        <button
+          id="sidebar-toggle"
+          class="btn btn--ghost btn--icon"
+          aria-label="Toggle navigation menu"
+          aria-expanded="false"
+          aria-controls="sidebar"
+        >
+          <!-- Hamburger icon -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <line x1="3" y1="6"  x2="21" y2="6"  />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+
+        <!-- Logo (visible in topbar on mobile, in sidebar on desktop) -->
+        <a href="#dashboard" class="nav-logo" aria-label="BurnSignal home — dashboard" id="topbar-logo">
+          <div class="nav-logo__icon" aria-hidden="true">
+            <!-- Flame / signal icon -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 2C12 2 8 6 8 12a4 4 0 0 0 8 0c0-2-1-4-1-4s2 2 2 5a5 5 0 0 1-10 0C7 7 12 2 12 2z"/>
+            </svg>
+          </div>
+          <span class="nav-logo__name">BurnSignal</span>
+          <span class="nav-logo__badge" aria-label="BRICS Sustainability Challenge">BRICS</span>
+        </a>
+
+        <div class="topbar__divider" aria-hidden="true"></div>
+
+        <!-- Pipeline mini-status (desktop) -->
+        <nav class="topbar-pipeline" aria-label="Pipeline stage status">
+          <div class="topbar-pipeline__stage" title="Satellite ingestion: complete">
+            <div class="topbar-pipeline__dot topbar-pipeline__dot--ok" aria-hidden="true"></div>
+            <span>Ingest</span>
+          </div>
+          <div class="topbar-pipeline__dot" aria-hidden="true" style="width:12px;height:1px;border-radius:0;background:var(--color-border-default)"></div>
+          <div class="topbar-pipeline__stage" title="Feature engineering: complete">
+            <div class="topbar-pipeline__dot topbar-pipeline__dot--ok" aria-hidden="true"></div>
+            <span>Features</span>
+          </div>
+          <div class="topbar-pipeline__dot" aria-hidden="true" style="width:12px;height:1px;border-radius:0;background:var(--color-border-default)"></div>
+          <div class="topbar-pipeline__stage" title="Scoring: running">
+            <div class="topbar-pipeline__dot topbar-pipeline__dot--running" aria-hidden="true"></div>
+            <span>Scoring</span>
+          </div>
+          <div class="topbar-pipeline__dot" aria-hidden="true" style="width:12px;height:1px;border-radius:0;background:var(--color-border-default)"></div>
+          <div class="topbar-pipeline__stage" title="Clustering: pending">
+            <div class="topbar-pipeline__dot" aria-hidden="true"></div>
+            <span>Clustering</span>
+          </div>
+          <div class="topbar-pipeline__dot" aria-hidden="true" style="width:12px;height:1px;border-radius:0;background:var(--color-border-default)"></div>
+          <div class="topbar-pipeline__stage" title="Dispatch: pending">
+            <div class="topbar-pipeline__dot" aria-hidden="true"></div>
+            <span>Dispatch</span>
+          </div>
+        </nav>
+
+      </div><!-- /topbar__left -->
+
+      <div class="topbar__right">
+
+        <!-- Last pipeline run timestamp -->
+        <span class="run-chip" id="last-run-chip" aria-label="Last pipeline run time">
+          Last run: <time id="last-run-time" datetime="">—</time>
+        </span>
+
+        <!-- Refresh trigger -->
+        <button
+          id="btn-refresh"
+          class="btn btn--secondary btn--sm"
+          aria-label="Refresh dashboard data"
+          title="Refresh data"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.86-3.36L23 10M1 14l4.63 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Refresh
+        </button>
+
+        <!-- Theme toggle -->
+        <button
+          id="btn-theme"
+          class="theme-toggle"
+          aria-label="Toggle light/dark mode"
+          title="Toggle theme"
+        >
+          <!-- Moon icon (default dark mode) -->
+          <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/>
+          </svg>
+          <!-- Sun icon (shown in light mode) -->
+          <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1"  x2="12" y2="3"/>  <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>  <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+        </button>
+
+      </div><!-- /topbar__right -->
+
+    </header>
+    <!-- /TOP BAR -->
+
+    <!-- ── SIDEBAR ──────────────────────────────────────────────── -->
+    <nav
+      id="sidebar"
+      class="sidebar"
+      aria-label="Main navigation"
+      role="navigation"
+    >
+
+      <!-- Logo (desktop sidebar) -->
+      <div class="sidebar__logo-area">
+        <a href="#dashboard" class="nav-logo" aria-label="BurnSignal — go to dashboard">
+          <div class="nav-logo__icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 2C12 2 8 6 8 12a4 4 0 0 0 8 0c0-2-1-4-1-4s2 2 2 5a5 5 0 0 1-10 0C7 7 12 2 12 2z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="nav-logo__name">BurnSignal</div>
+          </div>
+        </a>
+      </div>
+
+      <!-- Nav section: Monitoring -->
+      <div class="sidebar-section">
+        <div class="sidebar-section__label" aria-hidden="true">Monitoring</div>
+
+        <a
+          href="#dashboard"
+          class="nav-item active"
+          id="nav-dashboard"
+          role="link"
+          aria-current="page"
+          aria-label="District dashboard — plot heatmap and cluster overview"
+          data-page="dashboard"
+        >
+          <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          District Dashboard
+        </a>
+
+        <a
+          href="#clusters"
+          class="nav-item"
+          id="nav-clusters"
+          role="link"
+          aria-label="Hotspot clusters list"
+          data-page="clusters"
+        >
+          <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8" opacity=".4"/>
+            <line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/>
+            <line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
+          </svg>
+          Hotspot Clusters
+          <!-- Badge showing active cluster count (populated by JS) -->
+          <span class="nav-item__badge" id="badge-clusters" aria-label="clusters active">0</span>
+        </a>
+
+      </div><!-- /section Monitoring -->
+
+      <!-- Nav section: Dispatch -->
+      <div class="sidebar-section" style="margin-top: var(--space-4);">
+        <div class="sidebar-section__label" aria-hidden="true">Dispatch</div>
+
+        <a
+          href="#worker"
+          class="nav-item"
+          id="nav-worker"
+          role="link"
+          aria-label="KVK extension worker call list — ready-for-delivery tasks"
+          data-page="worker"
+        >
+          <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Worker Call List
+          <!-- Badge: tasks ready for delivery -->
+          <span class="nav-item__badge" id="badge-worker" aria-label="tasks ready for delivery">0</span>
+        </a>
+
+        <a
+          href="#officer"
+          class="nav-item"
+          id="nav-officer"
+          role="link"
+          aria-label="District officer escalation view — plots requiring intervention"
+          data-page="officer"
+        >
+          <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          Officer Escalation
+          <!-- Badge: escalation_required tasks -->
+          <span class="nav-item__badge" id="badge-officer" aria-label="escalation required tasks" style="background:var(--color-risk-critical-bg);color:var(--color-risk-critical);">0</span>
+        </a>
+
+      </div><!-- /section Dispatch -->
+
+      <!-- Nav section: System -->
+      <div class="sidebar-section" style="margin-top: var(--space-4);">
+        <div class="sidebar-section__label" aria-hidden="true">System</div>
+
+        <a
+          href="#pipeline"
+          class="nav-item"
+          id="nav-pipeline"
+          role="link"
+          aria-label="Pipeline run log — stage status and timing"
+          data-page="pipeline"
+        >
+          <svg class="nav-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          Pipeline Log
+        </a>
+
+      </div><!-- /section System -->
+
+      <!-- Sidebar footer -->
+      <div class="sidebar__footer" aria-label="Application information">
+        <p class="sidebar__footer-text">
+          <strong>Pilot district:</strong> Sangrur, Punjab (synthetic)<br>
+          <strong>Window:</strong> 72-hour burn likelihood<br>
+          <strong>Score threshold:</strong> ≥ 0.60
+        </p>
+        <p class="sidebar__footer-text" style="margin-top:var(--space-2); color: var(--color-text-tertiary);">
+          BurnSignal v0.1 · BRICS Sustainability Challenge
+        </p>
+      </div>
+
+    </nav>
+    <!-- /SIDEBAR -->
+
+    <!-- ── MAIN CONTENT ─────────────────────────────────────────── -->
+    <main
+      id="main-content"
+      class="main-content"
+      role="main"
+      aria-label="Main content area"
+      tabindex="-1"
+    >
+
+      <!-- ---- PAGE: DASHBOARD ------------------------------------ -->
+      <section
+        id="page-dashboard"
+        class="page-view active"
+        aria-label="District dashboard"
+        aria-live="polite"
+      >
+        <!-- Populated by components/map-panel.js in Step 3 -->
+        <div class="loading-placeholder" aria-busy="true" aria-label="Loading dashboard">
+          <div class="skeleton skeleton--sm" style="width:60%;height:32px;" aria-hidden="true"></div>
+          <div class="skeleton" style="height:420px;" aria-hidden="true"></div>
+          <div class="grid-4">
+            <div class="skeleton skeleton--sm" aria-hidden="true"></div>
+            <div class="skeleton skeleton--sm" aria-hidden="true"></div>
+            <div class="skeleton skeleton--sm" aria-hidden="true"></div>
+            <div class="skeleton skeleton--sm" aria-hidden="true"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---- PAGE: CLUSTERS ------------------------------------- -->
+      <section
+        id="page-clusters"
+        class="page-view"
+        aria-label="Hotspot clusters"
+        aria-live="polite"
+      >
+        <!-- Populated by components/cluster-table.js in Step 4 -->
+        <div class="loading-placeholder" aria-busy="true" aria-label="Loading cluster data">
+          <div class="skeleton skeleton--sm" style="width:40%;height:32px;" aria-hidden="true"></div>
+          <div class="skeleton" style="height:300px;" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <!-- ---- PAGE: WORKER CALL LIST ----------------------------- -->
+      <section
+        id="page-worker"
+        class="page-view"
+        aria-label="Worker call list"
+        aria-live="polite"
+      >
+        <!-- Populated by components/worker-calllist.js in Step 5 -->
+        <div class="loading-placeholder" aria-busy="true" aria-label="Loading worker tasks">
+          <div class="skeleton skeleton--sm" style="width:50%;height:32px;" aria-hidden="true"></div>
+          <div class="skeleton" style="height:300px;" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <!-- ---- PAGE: OFFICER ESCALATION -------------------------- -->
+      <section
+        id="page-officer"
+        class="page-view"
+        aria-label="Officer escalation view"
+        aria-live="polite"
+      >
+        <!-- Populated by components/officer-escalation.js in Step 6 -->
+        <div class="loading-placeholder" aria-busy="true" aria-label="Loading escalation data">
+          <div class="skeleton skeleton--sm" style="width:45%;height:32px;" aria-hidden="true"></div>
+          <div class="skeleton" style="height:300px;" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <!-- ---- PAGE: PIPELINE LOG --------------------------------- -->
+      <section
+        id="page-pipeline"
+        class="page-view"
+        aria-label="Pipeline run log"
+        aria-live="polite"
+      >
+        <div id="pipeline-log-root">
+          <div class="loading-placeholder" aria-busy="true" aria-label="Loading pipeline log">
+            <div class="skeleton skeleton--sm" style="width:35%;height:32px;" aria-hidden="true"></div>
+            <div class="skeleton" style="height:260px;" aria-hidden="true"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+    <!-- /MAIN CONTENT -->
+
+  </div><!-- /app-shell -->
+
+  <!-- ── TOAST CONTAINER ──────────────────────────────────────── -->
+  <div
+    id="toast-container"
+    class="toast-container"
+    role="region"
+    aria-label="Notifications"
+    aria-live="assertive"
+    aria-atomic="false"
+  ></div>
+
+  <!-- ============================================================
+       SCRIPTS — loaded at end of body for performance
+  ============================================================ -->
+
+  <!-- Leaflet JS (map) -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WLEo="
+    crossorigin="anonymous"
+    defer
+  ></script>
+
+  <!-- API client (must load before page components) -->
+  <script src="api-client.js" defer></script>
+
+  <!-- Page components (loaded by router when page is first activated) -->
+  <!-- Each component file registers itself on window.BurnSignal.components -->
+  <script src="components/map-panel.js"          defer></script>
+  <script src="components/cluster-table.js"      defer></script>
+  <script src="components/worker-calllist.js"    defer></script>
+  <script src="components/officer-escalation.js" defer></script>
+
+  <!-- ── SHELL SCRIPT ─────────────────────────────────────────── -->
+  <script>
+    'use strict';
+
+    /* ----------------------------------------------------------
+       Namespace — shared across all component files
+    ---------------------------------------------------------- */
+    window.BurnSignal = window.BurnSignal || {
+      components: {},   // component init functions registered by each file
+      state: {
+        currentPage: 'dashboard',
+        theme: 'dark',
+        badges: { clusters: 0, worker: 0, officer: 0 },
+      },
+    };
+
+    /* ----------------------------------------------------------
+       Theme toggle
+    ---------------------------------------------------------- */
+    const btnTheme  = document.getElementById('btn-theme');
+    const iconMoon  = document.getElementById('icon-moon');
+    const iconSun   = document.getElementById('icon-sun');
+    const html      = document.documentElement;
+
+    function applyTheme(theme) {
+      BurnSignal.state.theme = theme;
+      if (theme === 'light') {
+        html.classList.add('theme-light');
+        iconMoon.style.display = 'none';
+        iconSun.style.display  = '';
+        btnTheme.setAttribute('aria-label', 'Switch to dark mode');
+      } else {
+        html.classList.remove('theme-light');
+        iconMoon.style.display = '';
+        iconSun.style.display  = 'none';
+        btnTheme.setAttribute('aria-label', 'Switch to light mode');
+      }
+      try { localStorage.setItem('bs-theme', theme); } catch (_) {}
+    }
+
+    // Restore saved theme
+    try {
+      const saved = localStorage.getItem('bs-theme');
+      if (saved === 'light') applyTheme('light');
+    } catch (_) {}
+
+    btnTheme.addEventListener('click', () => {
+      applyTheme(BurnSignal.state.theme === 'dark' ? 'light' : 'dark');
+    });
+
+    /* ----------------------------------------------------------
+       Hash-based router
+    ---------------------------------------------------------- */
+    const PAGES = ['dashboard', 'clusters', 'worker', 'officer', 'pipeline'];
+    const transition = document.getElementById('page-transition');
+
+    function getPageFromHash() {
+      const raw = location.hash.replace('#', '').split('/')[0];
+      return PAGES.includes(raw) ? raw : 'dashboard';
+    }
+
+    function navigateTo(page, pushState = false) {
+      const prev = BurnSignal.state.currentPage;
+      if (prev === page) return;
+
+      // Transition overlay
+      transition.classList.add('active');
+
+      setTimeout(() => {
+        // Hide previous page
+        const prevEl = document.getElementById(`page-${prev}`);
+        if (prevEl) {
+          prevEl.classList.remove('active');
+          prevEl.removeAttribute('aria-current');
+        }
+
+        // Update nav items
+        document.querySelectorAll('.nav-item').forEach(el => {
+          const isActive = el.dataset.page === page;
+          el.classList.toggle('active', isActive);
+          if (isActive) {
+            el.setAttribute('aria-current', 'page');
+          } else {
+            el.removeAttribute('aria-current');
+          }
+        });
+
+        // Show new page
+        const nextEl = document.getElementById(`page-${page}`);
+        if (nextEl) {
+          nextEl.classList.add('active');
+        }
+
+        BurnSignal.state.currentPage = page;
+
+        // Update URL without triggering another hashchange
+        if (pushState) {
+          history.replaceState(null, '', `#${page}`);
+        }
+
+        // Initialise the component if not already done
+        const init = BurnSignal.components[page];
+        if (typeof init === 'function') {
+          init(nextEl);
+          // Mark as initialised so we don't double-call
+          BurnSignal.components[page] = null;
+        }
+
+        // Move focus to main for keyboard users
+        const main = document.getElementById('main-content');
+        if (main) main.focus();
+
+        // Remove transition overlay
+        transition.classList.remove('active');
+      }, 120); // match --duration-fast
+    }
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', () => {
+      navigateTo(getPageFromHash(), false);
+    });
+
+    // Intercept sidebar nav link clicks (prevent full navigation, use router)
+    document.querySelectorAll('.nav-item[data-page]').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = link.dataset.page;
+        history.pushState(null, '', `#${page}`);
+        navigateTo(page, false);
+      });
+    });
+
+    // Also intercept logo clicks
+    document.querySelectorAll('.nav-logo[href]').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        history.pushState(null, '', '#dashboard');
+        navigateTo('dashboard', false);
+      });
+    });
+
+    /* ----------------------------------------------------------
+       Badge counter updater (called by components after data load)
+    ---------------------------------------------------------- */
+    BurnSignal.updateBadge = function(key, count) {
+      BurnSignal.state.badges[key] = count;
+      const el = document.getElementById(`badge-${key}`);
+      if (!el) return;
+      el.textContent = count > 99 ? '99+' : String(count);
+      el.setAttribute('aria-label', `${count} ${key} items`);
+      // Hide badge when count is zero
+      el.style.display = count > 0 ? '' : 'none';
+    };
+
+    // Hide all badges initially until data loads
+    ['clusters', 'worker', 'officer'].forEach(k => BurnSignal.updateBadge(k, 0));
+
+    /* ----------------------------------------------------------
+       Last-run timestamp (populated by api-client after fetch)
+    ---------------------------------------------------------- */
+    BurnSignal.setLastRunTime = function(isoString) {
+      const el   = document.getElementById('last-run-time');
+      const chip = document.getElementById('last-run-chip');
+      if (!el || !isoString) return;
+      try {
+        const d = new Date(isoString);
+        el.setAttribute('datetime', isoString);
+        el.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        chip.title = `Full timestamp: ${d.toLocaleString()}`;
+      } catch (_) {
+        el.textContent = '—';
+      }
+    };
+
+    /* ----------------------------------------------------------
+       Refresh button
+    ---------------------------------------------------------- */
+    document.getElementById('btn-refresh').addEventListener('click', function() {
+      this.classList.add('btn--loading');
+      this.setAttribute('aria-disabled', 'true');
+      const btn = this;
+
+      // Trigger data refresh via api-client if available
+      if (typeof BurnSignal.api?.refresh === 'function') {
+        BurnSignal.api.refresh().finally(() => {
+          btn.classList.remove('btn--loading');
+          btn.removeAttribute('aria-disabled');
+        });
+      } else {
+        // Fallback: show spinner for 1.2s (api-client not loaded yet)
+        setTimeout(() => {
+          btn.classList.remove('btn--loading');
+          btn.removeAttribute('aria-disabled');
+        }, 1200);
+      }
+    });
+
+    /* ----------------------------------------------------------
+       Mobile sidebar toggle
+    ---------------------------------------------------------- */
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar       = document.getElementById('sidebar');
+
+    sidebarToggle.addEventListener('click', () => {
+      const isOpen = sidebarToggle.getAttribute('aria-expanded') === 'true';
+      sidebarToggle.setAttribute('aria-expanded', String(!isOpen));
+      // On mobile the sidebar is the bottom nav — this is a no-op
+      // for the fixed bottom nav layout but kept for future drawer pattern
+    });
+
+    /* ----------------------------------------------------------
+       Toast notification utility
+       Usage: BurnSignal.toast('Your message', 'warning', 4000)
+       Types: 'success' | 'warning' | 'critical' | 'info'
+    ---------------------------------------------------------- */
+    BurnSignal.toast = function(message, type = 'info', durationMs = 4000) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const icons = {
+        success:  '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+        warning:  '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+        critical: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+        info:     '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+      };
+      const colorMap = { success: 'ready', warning: 'pending', critical: 'escalation', info: 'delivered' };
+
+      const toast = document.createElement('div');
+      toast.className = `toast toast--${type === 'critical' ? 'critical' : type === 'warning' ? 'warning' : type === 'success' ? 'success' : ''}`;
+      toast.setAttribute('role', 'alert');
+      toast.setAttribute('aria-live', 'assertive');
+      toast.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="var(--color-status-${colorMap[type] || 'delivered'})"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true">${icons[type] || icons.info}</svg>
+        <span style="font-size:var(--text-sm);color:var(--color-text-primary);flex:1;">${message}</span>
+        <button onclick="this.closest('.toast').remove()"
+                aria-label="Dismiss notification"
+                style="background:none;border:none;cursor:pointer;color:var(--color-text-tertiary);padding:0;line-height:1;font-size:18px;">×</button>
+      `;
+
+      container.appendChild(toast);
+
+      // Auto-dismiss
+      if (durationMs > 0) {
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(8px)';
+          toast.style.transition = 'opacity 0.2s, transform 0.2s';
+          setTimeout(() => toast.remove(), 200);
+        }, durationMs);
+      }
+    };
+
+    /* ----------------------------------------------------------
+       Boot — initialise dashboard on first load
+    ---------------------------------------------------------- */
+    window.addEventListener('DOMContentLoaded', () => {
+      const initialPage = getPageFromHash();
+
+      // Set last run to now (will be overwritten by api-client)
+      BurnSignal.setLastRunTime(new Date().toISOString());
+
+      // Navigate to the hash page (or dashboard by default)
+      if (initialPage !== 'dashboard') {
+        // Swap without animation on cold load
+        document.getElementById('page-dashboard').classList.remove('active');
+        document.getElementById(`page-${initialPage}`)?.classList.add('active');
+        document.getElementById('nav-dashboard')?.classList.remove('active');
+        document.getElementById(`nav-${initialPage}`)?.classList.add('active');
+        BurnSignal.state.currentPage = initialPage;
+      }
+
+      // Components register themselves via script tags (defer);
+      // once all scripts are loaded, initialise the current page's component.
+      window.addEventListener('load', () => {
+        const init = BurnSignal.components[BurnSignal.state.currentPage];
+        if (typeof init === 'function') {
+          const el = document.getElementById(`page-${BurnSignal.state.currentPage}`);
+          init(el);
+          BurnSignal.components[BurnSignal.state.currentPage] = null;
+        }
+      });
+    });
+
+  </script>
+
+</body>
+</html>
