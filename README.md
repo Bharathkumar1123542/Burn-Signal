@@ -57,9 +57,6 @@ Start with `project_overview.md` for context, `architecture.md` for system desig
 
 ---
 
-## Project Status
-
-Hackathon MVP — see `project_overview.md` (Section 9, Milestones) for phase breakdown and `implementation.md` (Section 9, Open Decisions) for what still needs sign-off before each phase starts.
 
 ## Scope Note
 
