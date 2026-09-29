@@ -351,15 +351,40 @@
       preferCanvas:    true,   // better perf for many circle markers
     });
 
-    // Tile layer — dark basemap (CartoDB Dark Matter)
-    L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    // Base tile layers (100% keyless, public, zero secret footprint)
+    const darkCanvas = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
       {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
+        attribution: '&copy; Esri, DeLorme, NAVTEQ',
+        maxZoom: 16,
+      }
+    );
+
+    const satellite = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: '&copy; Esri, Maxar, Earthstar Geographics',
+        maxZoom: 18,
+      }
+    );
+
+    const osm = L.tileLayer(
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
       }
-    ).addTo(map);
+    );
+
+    // Default to Esri Dark Canvas (clean dark aesthetic, keyless, zero watermarks)
+    darkCanvas.addTo(map);
+
+    const baseMaps = {
+      "Dark Canvas": darkCanvas,
+      "Satellite": satellite,
+      "Street Map": osm,
+    };
+    L.control.layers(baseMaps, null, { position: 'bottomleft' }).addTo(map);
 
     // Layer groups for toggle
     const scoresLayer   = L.layerGroup();
@@ -535,6 +560,30 @@
         color: #f1f5f9 !important;
       }
       .leaflet-bar { border: none !important; box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important; }
+      .leaflet-control-layers {
+        background: #1a2236 !important;
+        border: 1px solid #2a3d5a !important;
+        border-radius: 8px !important;
+        color: #f1f5f9 !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+        font-family: Inter, sans-serif !important;
+        font-size: 11px !important;
+        padding: 6px 10px !important;
+      }
+      .leaflet-control-layers-toggle {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23f1f5f9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 2 7 12 12 22 7 12 2'/%3E%3Cpolyline points='2 17 12 22 22 17'/%3E%3Cpolyline points='2 12 12 17 22 12'/%3E%3C/svg%3E") !important;
+        background-size: 20px 20px !important;
+        background-position: center !important;
+        background-repeat: no-repeat !important;
+      }
+      .leaflet-control-layers label {
+        color: #cbd5e1 !important;
+        margin-bottom: 3px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      }
     `;
     document.head.appendChild(style);
 
@@ -551,6 +600,139 @@
     });
 
     return map;
+  }
+
+  /* ------------------------------------------------------------------
+     SVG Vector Map Fallback (renders when Leaflet is unavailable/offline)
+  ------------------------------------------------------------------ */
+  function renderSvgMapFallback(plots, clusters) {
+    const container = document.getElementById('bs-map');
+    if (!container) return;
+    const api = BurnSignal.api;
+
+    const validPlots = (plots || []).filter(p => typeof p.lat === 'number' && typeof p.lon === 'number');
+    const lats = validPlots.map(p => p.lat);
+    const lons = validPlots.map(p => p.lon);
+
+    const minLat = lats.length ? Math.min(...lats) - 0.03 : 30.12;
+    const maxLat = lats.length ? Math.max(...lats) + 0.03 : 30.36;
+    const minLon = lons.length ? Math.min(...lons) - 0.04 : 75.75;
+    const maxLon = lons.length ? Math.max(...lons) + 0.04 : 75.95;
+
+    const width = 800;
+    const height = 480;
+    const pad = 50;
+
+    function projectX(lon) {
+      if (maxLon === minLon) return width / 2;
+      return pad + ((lon - minLon) / (maxLon - minLon)) * (width - 2 * pad);
+    }
+    function projectY(lat) {
+      if (maxLat === minLat) return height / 2;
+      return height - pad - ((lat - minLat) / (maxLat - minLat)) * (height - 2 * pad);
+    }
+
+    const clusterSvg = (clusters || []).map(c => {
+      const cx = projectX(c.centroid_lon);
+      const cy = projectY(c.centroid_lat);
+      const tier = api.scoreToRiskTier(c.mean_score);
+      const color = api.riskTierToColor(tier);
+      return `
+        <g class="svg-cluster-marker" data-cluster-id="${c.cluster_id}">
+          <circle cx="${cx}" cy="${cy}" r="48" fill="#38bdf8" fill-opacity="0.08" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="5,4" />
+          <rect x="${cx - 42}" y="${cy - 22}" width="84" height="20" rx="4" fill="${color}" fill-opacity="0.9" />
+          <text x="${cx}" y="${cy - 8}" fill="#ffffff" font-size="10" font-weight="700" text-anchor="middle" font-family="Inter,sans-serif">${c.label || c.cluster_id}</text>
+        </g>
+      `;
+    }).join('');
+
+    const plotSvg = validPlots.map(p => {
+      const px = projectX(p.lon);
+      const py = projectY(p.lat);
+      const tier = api.scoreToRiskTier(p.burn_likelihood_score);
+      const color = api.riskTierToColor(tier);
+      const r = Math.round(7 + p.burn_likelihood_score * 8);
+      const scorePct = Math.round(p.burn_likelihood_score * 100);
+      return `
+        <g class="svg-plot-node" style="cursor:pointer;" data-plot-id="${p.plot_id}" tabindex="0" role="button" aria-label="${p.farmer_name}: ${scorePct}% burn likelihood">
+          <circle cx="${px}" cy="${py}" r="${r + 4}" fill="${color}" fill-opacity="0.25" />
+          <circle cx="${px}" cy="${py}" r="${r}" fill="${color}" stroke="#0b1120" stroke-width="2" />
+          <title>${p.farmer_name} (${p.plot_id})&#10;Burn Likelihood: ${(p.burn_likelihood_score).toFixed(2)} (${scorePct}%)&#10;Residue: ${p.residue_index != null ? p.residue_index.toFixed(2) : '—'}&#10;Block: ${p.block_code}&#10;Area: ${p.plot_area_ha} ha</title>
+        </g>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <div style="position:relative;width:100%;height:100%;min-height:480px;background:#0b1120;border-radius:var(--radius-xl);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="position:absolute;top:12px;left:16px;z-index:10;display:flex;align-items:center;gap:8px;background:rgba(15,23,42,0.88);backdrop-filter:blur(6px);padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.12);font-size:12px;color:#94a3b8;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;"></span>
+          <span style="font-weight:600;color:#f8fafc;">Sangrur Pilot Vector Map</span> · ${validPlots.length} plots · ${(clusters || []).length} clusters
+        </div>
+
+        <div id="svg-map-tooltip" style="display:none;position:absolute;top:12px;right:16px;z-index:20;background:#1e293b;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 16px;box-shadow:0 8px 24px rgba(0,0,0,0.6);min-width:220px;font-size:12px;color:#f1f5f9;">
+        </div>
+
+        <svg viewBox="0 0 ${width} ${height}" style="width:100%;height:100%;flex:1;touch-action:none;" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <pattern id="grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255, 255, 255, 0.04)" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect width="${width}" height="${height}" fill="#0b1120" />
+          <rect width="${width}" height="${height}" fill="url(#grid-pattern)" />
+          <rect x="25" y="25" width="${width - 50}" height="${height - 50}" rx="12" fill="none" stroke="rgba(56, 189, 248, 0.15)" stroke-width="1.5" stroke-dasharray="6,6" />
+
+          ${clusterSvg}
+          ${plotSvg}
+        </svg>
+
+        <div style="position:absolute;bottom:12px;right:16px;z-index:10;background:rgba(15,23,42,0.9);backdrop-filter:blur(6px);padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);font-size:11px;display:flex;gap:12px;align-items:center;">
+          <div style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-risk-critical, #ef4444);"></span> Critical (&ge;0.75)</div>
+          <div style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-risk-high, #f97316);"></span> High (0.60-0.74)</div>
+          <div style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-risk-moderate, #eab308);"></span> Moderate (0.40-0.59)</div>
+          <div style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-risk-low, #22c55e);"></span> Low (&lt;0.40)</div>
+        </div>
+      </div>
+    `;
+
+    // Add click listeners to plot nodes to show detail card
+    const tooltip = document.getElementById('svg-map-tooltip');
+    container.querySelectorAll('.svg-plot-node').forEach(node => {
+      const pid = node.dataset.plotId;
+      const p = validPlots.find(x => x.plot_id === pid);
+      if (!p || !tooltip) return;
+      const tier = api.scoreToRiskTier(p.burn_likelihood_score);
+      const color = api.riskTierToColor(tier);
+      const scorePct = Math.round(p.burn_likelihood_score * 100);
+
+      node.addEventListener('click', (e) => {
+        e.stopPropagation();
+        tooltip.style.display = 'block';
+        tooltip.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <strong style="font-size:13px;color:#f8fafc;">${p.farmer_name}</strong>
+            <button onclick="document.getElementById('svg-map-tooltip').style.display='none'" style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:0;font-size:14px;">✕</button>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">Plot ${p.plot_id} · Block ${p.block_code}</div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+            <span style="color:#94a3b8;">Burn likelihood:</span>
+            <strong style="color:${color};">${p.burn_likelihood_score.toFixed(2)} (${scorePct}%)</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+            <span style="color:#94a3b8;">Residue index:</span>
+            <span>${p.residue_index != null ? p.residue_index.toFixed(2) : '—'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+            <span style="color:#94a3b8;">Days since harvest:</span>
+            <span>${p.days_since_harvest}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span style="color:#94a3b8;">Area:</span>
+            <span>${p.plot_area_ha} ha</span>
+          </div>
+        `;
+      });
+    });
   }
 
   /* ------------------------------------------------------------------
@@ -621,17 +803,16 @@
       });
     }
 
-    // 8. Init map (Leaflet must be loaded)
+    // 8. Init map (Leaflet if available, graceful SVG vector fallback)
     if (typeof L !== 'undefined') {
-      initMap(plots, clusters);
+      try {
+        initMap(plots, clusters);
+      } catch (err) {
+        console.warn('Leaflet init error, rendering SVG fallback:', err);
+        renderSvgMapFallback(plots, clusters);
+      }
     } else {
-      document.getElementById('bs-map').innerHTML =
-        `<div class="table-empty">
-           <p>Map unavailable — Leaflet failed to load.</p>
-           <p style="font-size:var(--text-sm);color:var(--color-text-tertiary);margin-top:8px;">
-             Check your network connection and refresh.
-           </p>
-         </div>`;
+      renderSvgMapFallback(plots, clusters);
     }
 
     // 9. Listen for data refresh events from the topbar

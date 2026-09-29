@@ -1,0 +1,25 @@
+# BurnSignal — Cloud Scheduler Job Specifications
+# Architecture.md Section 4 & Section 12
+
+scheduler_jobs:
+  - name: burnsignal-daily-batch-trigger
+    description: Triggers daily satellite ingestion and 72-hour burn prediction pipeline
+    schedule: "0 4 * * *" # Daily at 04:00 UTC (before morning agricultural operations)
+    time_zone: "Asia/Kolkata"
+    target_type: http
+    http_target:
+      uri: "https://asia-south1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/burnsignal-prod/jobs/burnsignal-orchestrator:run"
+      http_method: POST
+      oidc_token:
+        service_account_email: "burnsignal-scheduler@burnsignal-prod.iam.gserviceaccount.com"
+
+  - name: burnsignal-weekly-socioeconomic-refresh
+    description: Refreshes block-level MSP procurement and machinery subsidy uptake rates
+    schedule: "0 2 * * 1" # Every Monday at 02:00 UTC
+    time_zone: "Asia/Kolkata"
+    target_type: http
+    http_target:
+      uri: "https://asia-south1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/burnsignal-prod/jobs/burnsignal-loader-socioeconomic:run"
+      http_method: POST
+      oidc_token:
+        service_account_email: "burnsignal-scheduler@burnsignal-prod.iam.gserviceaccount.com"

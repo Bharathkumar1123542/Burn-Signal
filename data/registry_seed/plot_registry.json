@@ -1,0 +1,202 @@
+[
+  {
+    "plot_id": "PLOT-PB-SAN-001",
+    "block_code": "PB-SANGRUR-01",
+    "farmer_name": "Gurpreet Singh",
+    "farmer_phone": "+91-98765-01001",
+    "plot_local_name": "Wadda Khet (North)",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[75.836, 30.245], [75.839, 30.245], [75.839, 30.248], [75.836, 30.248], [75.836, 30.245]]]
+    },
+    "centroid": {"latitude": 30.2465, "longitude": 75.8375},
+    "baseline_ndvi": 0.72,
+    "baseline_date": "2026-09-15",
+    "plot_area_hectares": 3.4,
+    "crop_calendar": {
+      "crop_type": "Paddy (PR-126)",
+      "harvest_estimate_date": "2026-10-05",
+      "sowing_deadline": "2026-11-10"
+    }
+  },
+  {
+    "plot_id": "PLOT-PB-SAN-002",
+    "block_code": "PB-SANGRUR-01",
+    "farmer_name": "Harjit Kaur",
+    "farmer_phone": "+91-98765-01002",
+    "plot_local_name": "Kassi Wala Field",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[75.840, 30.246], [75.843, 30.246], [75.843, 30.249], [75.840, 30.249], [75.840, 30.246]]]
+    },
+    "centroid": {"latitude": 30.2475, "longitude": 75.8415},
+    "baseline_ndvi": 0.75,
+    "baseline_date": "2026-09-15",
+    "plot_area_hectares": 2.8,
+    "crop_calendar": {
+      "crop_type": "Paddy (Pusa-44)",
+      "harvest_estimate_date": "2026-10-04",
+      "sowing_deadline": "2026-11-08"
+    }
+  },
+  {
+    "plot_id": "PLOT-PB-SAN-003",
+    "block_code": "PB-SANGRUR-01",
+    "farmer_name": "Jaswinder Singh",
+    "farmer_phone": "+91-98765-01003",
+    "plot_local_name": "Tubewell Wala Plot",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[75.838, 30.249], [75.841, 30.249], [75.841, 30.252], [75.838, 30.252], [75.838, 30.249]]]
+    },
+    "centroid": {"latitude": 30.2505, "longitude": 75.8395},
+    "baseline_ndvi": 0.70,
+    "baseline_date": "2026-09-15",
+    "plot_area_hectares": 4.1,
+    "crop_calendar": {
+      "crop_type": "Paddy (PR-126)",
+      "harvest_estimate_date": "2026-10-06",
+      "sowing_deadline": "2026-11-12"
+    }
+  },
+  {
+    "plot_id": "PLOT-PB-SAN-004",
+    "block_code": "PB-SANGRUR-01",
+    "farmer_name": "Amrik Singh",
+    "farmer_phone": "+91-98765-01004",
+    "plot_local_name": "Sua Boundary Field",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[75.835, 30.250], [75.838, 30.250], [75.838, 30.253], [75.835, 30.253], [75.835, 30.250]]]
+    },
+    "centroid": {"latitude": 30.2515, "longitude": 75.8365},
+    "baseline_ndvi": 0.68,
+    "baseline_date": "2026-09-15",
+    "plot_area_hectares": 3.0,
+    "crop_calendar": {
+      "crop_type": "Paddy (PR-126)",
+      "harvest_estimate_date": "2026-10-03",
+      "sowing_deadline": "2026-11-10"
+    }
+  },
+  {
+    "plot_id": "PLOT-PB-SAN-005",
+    "block_code": "PB-SANGRUR-02",
+    "farmer_name": "Baldev Singh",
+    "farmer_phone": "+91-98765-02001",
+    "plot_local_name": "Dharampura Sector 1",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[75.895, 30.290], [75.898, 30.290], [75.898, 30.293], [75.895, 30.293], [75.895, 30.290]]]
+    },
+    "centroid": {"latitude": 30.2915, "longitude": 75.8965},
+    "baseline_ndvi": 0.74,
+    "baseline_date": "2026-09-15",
+    "plot_area_hectares": 5.2,
+    "crop_calendar": {
+      "crop_type": "Paddy (Pusa-44)",
+      "harvest_estimate_date": "2026-10-02",
+      "sowing_deadline": "2026-11-05"
+    }
+  },
+  {
+    "plot_id": "PLOT-PB-SAN-006",
+    "block_code": "PB-SANGRUR-02",
+    "farmer_name": "Sukhdev Singh",
+    "farmer_phone": "+91-98765-02002",
+    "plot_local_name": "Rakhra Link Field",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[75.897, 30.292], [75.900, 30.292], [75.900, 30.295], [75.897, 30.295], [75.897, 30.292]]]
+    },
+    "centroid": {"latitude": 30.2935, "longitude": 75.8985},
+    "baseline_ndvi": 0.71,
+    "baseline_date": "2026-09-15",
+    "plot_area_hectares": 3.7,
+    "crop_calendar": {
+      "crop_type": "Paddy (PR-126)",
+      "harvest_estimate_date": "2026-10-04",
+      "sowing_deadline": "2026-11-07"
+    }
+  },
+  {
+    "plot_id": "PLOT-PB-SAN-007",
+    "block_code": "PB-SANGRUR-02",
+    "farmer_name": "Davinder Kaur",
+    "farmer_phone": "+91-98765-02003",
+    "plot_local_name": "Pind Border East",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[75.899, 30.294], [75.902, 30.294], [75.902, 30.297], [75.899, 30.297], [75.899, 30.294]]]
+    },
+    "centroid": {"latitude": 30.2955, "longitude": 75.9005},
+    "baseline_ndvi": 0.76,
+    "baseline_date": "2026-09-15",
+    "plot_area_hectares": 2.5,
+    "crop_calendar": {
+      "crop_type": "Paddy (PR-126)",
+      "harvest_estimate_date": "2026-10-06",
+      "sowing_deadline": "2026-11-10"
+    }
+  },
+  {
+    "plot_id": "PLOT-PB-SAN-008",
+    "block_code": "PB-SANGRUR-03",
+    "farmer_name": "Manjit Singh",
+    "farmer_phone": "+91-98765-03001",
+    "plot_local_name": "Bhawanigarh Bypass South",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[76.040, 30.230], [76.043, 30.230], [76.043, 30.233], [76.040, 30.233], [76.040, 30.230]]]
+    },
+    "centroid": {"latitude": 30.2315, "longitude": 76.0415},
+    "baseline_ndvi": 0.69,
+    "baseline_date": "2026-09-15",
+    "plot_area_hectares": 4.5,
+    "crop_calendar": {
+      "crop_type": "Paddy (Pusa-44)",
+      "harvest_estimate_date": "2026-10-01",
+      "sowing_deadline": "2026-11-05"
+    }
+  },
+  {
+    "plot_id": "PLOT-PB-SAN-009",
+    "block_code": "PB-SANGRUR-03",
+    "farmer_name": "Kuldeep Singh",
+    "farmer_phone": "+91-98765-03002",
+    "plot_local_name": "Canal Reach A",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[76.042, 30.232], [76.045, 30.232], [76.045, 30.235], [76.042, 30.235], [76.042, 30.232]]]
+    },
+    "centroid": {"latitude": 30.2335, "longitude": 76.0435},
+    "baseline_ndvi": 0.73,
+    "baseline_date": "2026-09-15",
+    "plot_area_hectares": 3.1,
+    "crop_calendar": {
+      "crop_type": "Paddy (PR-126)",
+      "harvest_estimate_date": "2026-10-05",
+      "sowing_deadline": "2026-11-09"
+    }
+  },
+  {
+    "plot_id": "PLOT-PB-SAN-010",
+    "block_code": "PB-SANGRUR-03",
+    "farmer_name": "Nirmal Singh",
+    "farmer_phone": "+91-98765-03003",
+    "plot_local_name": "Canal Reach B",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[76.044, 30.234], [76.047, 30.234], [76.047, 30.237], [76.044, 30.237], [76.044, 30.234]]]
+    },
+    "centroid": {"latitude": 30.2355, "longitude": 76.0455},
+    "baseline_ndvi": 0.77,
+    "baseline_date": "2026-09-15",
+    "plot_area_hectares": 2.2,
+    "crop_calendar": {
+      "crop_type": "Paddy (PR-126)",
+      "harvest_estimate_date": "2026-10-04",
+      "sowing_deadline": "2026-11-08"
+    }
+  }
+]

@@ -1,0 +1,126 @@
+# BurnSignal — Gemini-CLI Pipeline Orchestration Definition
+# Document version: 1.0 (implementation.md Section 3.8 & Architecture.md Section 4)
+
+pipeline:
+  name: burnsignal-daily-batch
+  description: Daily predictive stubble-burning intervention pipeline for Sangrur district
+  cadence: "daily at 04:00 UTC"
+  timeout_total_seconds: 21600 # 6 hours total budget (Architecture Section 9.3)
+
+stages:
+  - id: stage_01_ingest_satellite
+    name: Satellite Ingestion Service
+    service_path: services/ingestion_satellite/main.py
+    runtime: cloud_run_job
+    timeout_seconds: 14400 # < 4 hours per budget
+    max_retries: 2
+    retry_backoff_seconds: 30
+    inputs:
+      - dataset: burnsignal_registry
+        table: plot_registry
+    outputs:
+      - dataset: burnsignal_raw
+        table: plot_residue_readings
+
+  - id: stage_02_loader_socioeconomic
+    name: Socioeconomic Data Loader
+    service_path: services/loader_socioeconomic/main.py
+    runtime: cloud_run_job
+    timeout_seconds: 1800 # 30 min
+    max_retries: 2
+    retry_backoff_seconds: 15
+    inputs:
+      - source: data/registry_seed/msp_subsidy_seed.csv
+    outputs:
+      - dataset: burnsignal_raw
+        table: block_socioeconomic
+
+  - id: stage_03_feature_pipeline
+    name: Feature Engineering Pipeline
+    service_path: services/feature_pipeline/main.py
+    runtime: cloud_run_job
+    timeout_seconds: 3600 # < 1 hour per budget
+    max_retries: 2
+    retry_backoff_seconds: 20
+    depends_on:
+      - stage_01_ingest_satellite
+      - stage_02_loader_socioeconomic
+    inputs:
+      - dataset: burnsignal_raw
+        table: plot_residue_readings
+      - dataset: burnsignal_raw
+        table: block_socioeconomic
+    outputs:
+      - dataset: burnsignal_features
+        table: plot_features
+
+  - id: stage_04_scoring_service
+    name: Burn-Likelihood Scoring Service
+    service_path: services/scoring_service/main.py
+    runtime: cloud_run_job
+    timeout_seconds: 1800 # < 30 minutes per budget
+    max_retries: 2
+    retry_backoff_seconds: 15
+    depends_on:
+      - stage_03_feature_pipeline
+    inputs:
+      - dataset: burnsignal_features
+        table: plot_features
+    outputs:
+      - dataset: burnsignal_scoring
+        table: plot_scores
+
+  - id: stage_05_clustering_agent
+    name: Hotspot Clustering Agent
+    service_path: services/clustering_agent/main.py
+    runtime: cloud_run_job
+    timeout_seconds: 900 # < 15 minutes per budget
+    max_retries: 1
+    retry_backoff_seconds: 10
+    depends_on:
+      - stage_04_scoring_service
+    inputs:
+      - dataset: burnsignal_scoring
+        table: plot_scores
+    outputs:
+      - dataset: burnsignal_scoring
+        table: hotspot_clusters
+      - dataset: burnsignal_scoring
+        table: hotspot_cluster_members
+
+  - id: stage_06_coordination_agent
+    name: A2A Coordination Agent
+    service_path: services/coordination_agent/main.py
+    runtime: cloud_run_job
+    timeout_seconds: 900 # < 15 minutes per budget
+    max_retries: 1
+    retry_backoff_seconds: 10
+    depends_on:
+      - stage_05_clustering_agent
+    inputs:
+      - dataset: burnsignal_scoring
+        table: hotspot_clusters
+      - dataset: burnsignal_registry
+        table: kvk_jurisdiction_map
+      - dataset: burnsignal_registry
+        table: equipment_inventory
+    outputs:
+      - dataset: burnsignal_scoring
+        table: dispatch_task
+
+  - id: stage_07_dispatch_service
+    name: Voice Script Generation & Dispatch Service
+    service_path: services/dispatch_service/main.py
+    runtime: cloud_run_job
+    timeout_seconds: 900 # < 15 minutes per budget
+    max_retries: 2
+    retry_backoff_seconds: 10
+    depends_on:
+      - stage_06_coordination_agent
+    inputs:
+      - dataset: burnsignal_scoring
+        table: dispatch_task
+    outputs:
+      - storage: burnsignal-audio
+      - dataset: burnsignal_scoring
+        table: dispatch_task

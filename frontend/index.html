@@ -12,16 +12,12 @@
   <meta property="og:type" content="website" />
 
   <title>BurnSignal — Pre-Ignition Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f97316'%3E%3Cpath d='M12 2C12 2 8 6 8 12a4 4 0 0 0 8 0c0-2-1-4-1-4s2 2 2 5a5 5 0 0 1-10 0C7 7 12 2 12 2z'/%3E%3C/svg%3E" />
 
   <link rel="stylesheet" href="styles/index.css" />
 
-  <!-- Leaflet CSS (map panel — loaded here so it doesn't block component JS) -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin="anonymous"
-  />
+  <!-- Leaflet CSS (local vendor with CDN fallback) -->
+  <link rel="stylesheet" href="vendor/leaflet.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';" />
 
   <style>
     /* ── App-shell page-transition overlay ──────────────────────── */
@@ -544,13 +540,15 @@
        SCRIPTS — loaded at end of body for performance
   ============================================================ -->
 
-  <!-- Leaflet JS (map) -->
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WLEo="
-    crossorigin="anonymous"
-    defer
-  ></script>
+  <!-- Leaflet JS (local vendor with CDN fallback) -->
+  <script src="vendor/leaflet.js"></script>
+  <script>
+    if (typeof L === 'undefined') {
+      const cdnScript = document.createElement('script');
+      cdnScript.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      document.head.appendChild(cdnScript);
+    }
+  </script>
 
   <!-- API client (must load before page components) -->
   <script src="api-client.js" defer></script>
@@ -561,6 +559,7 @@
   <script src="components/cluster-table.js"      defer></script>
   <script src="components/worker-calllist.js"    defer></script>
   <script src="components/officer-escalation.js" defer></script>
+  <script src="components/pipeline-log.js"       defer></script>
 
   <!-- ── SHELL SCRIPT ─────────────────────────────────────────── -->
   <script>
@@ -838,14 +837,21 @@
 
       // Components register themselves via script tags (defer);
       // once all scripts are loaded, initialise the current page's component.
-      window.addEventListener('load', () => {
-        const init = BurnSignal.components[BurnSignal.state.currentPage];
+      function runInitialComponent() {
+        const page = BurnSignal.state.currentPage;
+        const init = BurnSignal.components[page];
         if (typeof init === 'function') {
-          const el = document.getElementById(`page-${BurnSignal.state.currentPage}`);
+          const el = document.getElementById(`page-${page}`);
           init(el);
-          BurnSignal.components[BurnSignal.state.currentPage] = null;
+          BurnSignal.components[page] = null;
         }
-      });
+      }
+
+      if (document.readyState === 'complete') {
+        runInitialComponent();
+      } else {
+        window.addEventListener('load', runInitialComponent);
+      }
     });
 
   </script>

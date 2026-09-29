@@ -20,8 +20,12 @@
    API_BASE_URL is injected at build/deploy time.
    Falls back to null → mock mode.
 ================================================================ */
-const API_BASE_URL = window.__BS_API_BASE_URL__ || null;
-const USE_MOCK     = !API_BASE_URL;
+const API_BASE_URL = (typeof window !== 'undefined' && window.__BS_API_BASE_URL__ !== undefined)
+  ? window.__BS_API_BASE_URL__
+  : (typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')
+      ? window.location.origin
+      : 'http://localhost:8000');
+let USE_MOCK = !API_BASE_URL;
 const MOCK_DELAY_MS = 600; // simulate network latency in mock mode
 
 /* ================================================================
@@ -241,18 +245,24 @@ const api = {
    * Fetch all plot scores for the pilot district.
    * @returns {Promise<typeof MOCK_PLOT_SCORES>}
    */
-  getPlotScores() {
-    if (USE_MOCK) return _mockDelay(MOCK_PLOT_SCORES);
-    return _apiFetch('/api/v1/plot-scores');
+  async getPlotScores() {
+    if (!USE_MOCK && API_BASE_URL) {
+      try { return await _apiFetch('/api/v1/plot-scores'); }
+      catch (_) { USE_MOCK = true; }
+    }
+    return _mockDelay(MOCK_PLOT_SCORES);
   },
 
   /**
    * Fetch all hotspot clusters.
    * @returns {Promise<typeof MOCK_CLUSTERS>}
    */
-  getClusters() {
-    if (USE_MOCK) return _mockDelay(MOCK_CLUSTERS);
-    return _apiFetch('/api/v1/clusters');
+  async getClusters() {
+    if (!USE_MOCK && API_BASE_URL) {
+      try { return await _apiFetch('/api/v1/clusters'); }
+      catch (_) { USE_MOCK = true; }
+    }
+    return _mockDelay(MOCK_CLUSTERS);
   },
 
   /**
@@ -260,35 +270,43 @@ const api = {
    * @param {{ worker_id?: string, status?: string }} [filters]
    * @returns {Promise<typeof MOCK_DISPATCH_TASKS>}
    */
-  getDispatchTasks(filters = {}) {
-    if (USE_MOCK) {
-      const filtered = MOCK_DISPATCH_TASKS.filter(t => {
-        if (filters.worker_id && t.worker_id !== filters.worker_id) return false;
-        if (filters.status    && t.status    !== filters.status)    return false;
-        return true;
-      });
-      return _mockDelay(filtered);
+  async getDispatchTasks(filters = {}) {
+    if (!USE_MOCK && API_BASE_URL) {
+      try {
+        const params = new URLSearchParams(filters).toString();
+        return await _apiFetch(`/api/v1/dispatch-tasks${params ? '?' + params : ''}`);
+      } catch (_) { USE_MOCK = true; }
     }
-    const params = new URLSearchParams(filters).toString();
-    return _apiFetch(`/api/v1/dispatch-tasks${params ? '?' + params : ''}`);
+    const filtered = MOCK_DISPATCH_TASKS.filter(t => {
+      if (filters.worker_id && t.worker_id !== filters.worker_id) return false;
+      if (filters.status    && t.status    !== filters.status)    return false;
+      return true;
+    });
+    return _mockDelay(filtered);
   },
 
   /**
    * Fetch pipeline run log (most recent run).
    * @returns {Promise<typeof MOCK_PIPELINE_LOG>}
    */
-  getPipelineLog() {
-    if (USE_MOCK) return _mockDelay(MOCK_PIPELINE_LOG);
-    return _apiFetch('/api/v1/pipeline-log/latest');
+  async getPipelineLog() {
+    if (!USE_MOCK && API_BASE_URL) {
+      try { return await _apiFetch('/api/v1/pipeline-log/latest'); }
+      catch (_) { USE_MOCK = true; }
+    }
+    return _mockDelay(MOCK_PIPELINE_LOG);
   },
 
   /**
    * Fetch dashboard summary stats.
    * @returns {Promise<typeof MOCK_SUMMARY>}
    */
-  getSummary() {
-    if (USE_MOCK) return _mockDelay(MOCK_SUMMARY);
-    return _apiFetch('/api/v1/summary');
+  async getSummary() {
+    if (!USE_MOCK && API_BASE_URL) {
+      try { return await _apiFetch('/api/v1/summary'); }
+      catch (_) { USE_MOCK = true; }
+    }
+    return _mockDelay(MOCK_SUMMARY);
   },
 
   /**

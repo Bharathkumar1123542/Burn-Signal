@@ -1,0 +1,8 @@
+state,district,sub_district_block,reporting_date,procurement_target_mt,procurement_actual_mt,msp_rate_pct,crm_machinery_sanctioned,crm_machinery_disbursed,subsidy_utilization_pct
+Punjab,Sangrur,PB-SANGRUR-01,2026-09-20,450000,396000,0.88,140,112,0.80
+Punjab,Sangrur,PB-SANGRUR-01,2026-09-27,450000,405000,0.90,140,119,0.85
+Punjab,Sangrur,PB-SANGRUR-02,2026-09-20,520000,436800,0.84,180,126,0.70
+Punjab,Sangrur,PB-SANGRUR-02,2026-09-27,520000,447200,0.86,180,135,0.75
+Punjab,Sangrur,PB-SANGRUR-03,2026-09-20,380000,285000,0.75,120,72,0.60
+Punjab,Sangrur,PB-SANGRUR-03,2026-09-27,380000,296400,0.78,120,78,0.65
+Punjab,Sangrur,PB-SANGRUR-04,2026-09-27,300000,210000,0.70,90,45,0.50

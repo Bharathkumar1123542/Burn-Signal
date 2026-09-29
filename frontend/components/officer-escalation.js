@@ -279,10 +279,11 @@
       const plot  = plotMap[t.plot_id];
       const ptier = api.scoreToRiskTier(plot?.burn_likelihood_score ?? 0);
       const pclr  = api.riskTierToColor(ptier);
+      const farmer = t.farmer_name || plot?.farmer_name || 'Farmer';
       return `
         <tr>
           <td style="font-family:var(--font-mono);font-size:var(--text-xs);">${t.plot_id}</td>
-          <td style="font-size:var(--text-sm);">${t.farmer_name}</td>
+          <td style="font-size:var(--text-sm);">${farmer}</td>
           <td>
             <span class="score-cell font-mono text-sm" style="color:${pclr};">
               ${plot?.burn_likelihood_score?.toFixed(2) ?? '—'}
@@ -313,7 +314,7 @@
           <div class="escal-card__title-wrap">
             <div class="escal-card__title">${cluster.label}</div>
             <div class="escal-card__sub">
-              ${cluster.cluster_id} · Block ${cluster.block_code}
+              ${cluster.cluster_id} · Block ${cluster.block_code || 'PB-SANGRUR-01'}
               · ${cluster.plot_count} plot${cluster.plot_count !== 1 ? 's' : ''}
               · Mean score <strong style="color:${color};">${cluster.mean_score.toFixed(2)}</strong>
             </div>

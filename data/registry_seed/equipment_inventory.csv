@@ -1,0 +1,7 @@
+equipment_id,equipment_type,latitude,longitude,location_description,slot_start,slot_end,status,provider_contact,created_at
+EQP-SAN-001,happy_seeder,30.2450,75.8350,Sangrur PACS Custom Hiring Centre,2026-09-30 08:00:00 UTC,2026-09-30 14:00:00 UTC,available,+91-98720-11001,2026-09-20 00:00:00 UTC
+EQP-SAN-002,baler,30.2480,75.8420,Bhaddalvad Farm Machinery Bank,2026-09-30 09:00:00 UTC,2026-09-30 16:00:00 UTC,available,+91-98720-11002,2026-09-20 00:00:00 UTC
+EQP-SAN-003,super_sms,30.2880,75.8920,Sunam Agro Cooperative Hub,2026-10-01 10:00:00 UTC,2026-10-01 18:00:00 UTC,available,+91-98720-11003,2026-09-20 00:00:00 UTC
+EQP-SAN-004,happy_seeder,30.2920,75.9010,Dharampura Cooperative Society,2026-10-01 08:00:00 UTC,2026-10-01 14:00:00 UTC,available,+91-98720-11004,2026-09-20 00:00:00 UTC
+EQP-SAN-005,baler,30.2300,76.0400,Bhawanigarh Kisan Seva Kendra,2026-10-15 07:00:00 UTC,2026-10-15 13:00:00 UTC,available,+91-98720-11005,2026-09-20 00:00:00 UTC
+EQP-SAN-006,happy_seeder,30.2320,76.0440,Kakra CHC Center,2026-09-30 11:00:00 UTC,2026-09-30 17:00:00 UTC,held,+91-98720-11006,2026-09-20 00:00:00 UTC

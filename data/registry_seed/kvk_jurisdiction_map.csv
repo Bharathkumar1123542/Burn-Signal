@@ -1,0 +1,4 @@
+block_code,worker_id,worker_name,worker_phone,kvk_center_name,assigned_at
+PB-SANGRUR-01,WORKER-SAN-01,Rajinder Sharma,+91-98140-55001,KVK Kheri Sangrur,2026-08-01 09:00:00 UTC
+PB-SANGRUR-02,WORKER-SAN-02,Simranjit Singh,+91-98140-55002,KVK Sub-Station Sunam,2026-08-01 09:00:00 UTC
+PB-SANGRUR-03,WORKER-SAN-03,Harpreet Singh,+91-98140-55003,KVK Bhawanigarh Extension,2026-08-01 09:00:00 UTC

@@ -1,0 +1,27 @@
+# Secrets and Environment Variables
+.env
+*.env
+*.key
+*.pem
+
+# Python Caches and Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+ENV/
+
+# Temporary and Output Data Caches
+data/audio_cache/
+*.mp3
+*.wav
+
+# IDE and OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
